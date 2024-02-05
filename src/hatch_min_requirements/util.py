@@ -1,3 +1,5 @@
+"""Functions for determining the minimum compatible constrained version of a package."""
+
 from __future__ import annotations
 
 import operator
@@ -103,7 +105,7 @@ def version_is_compatible(a: PackagingVersion, b: PackagingVersion) -> bool:
     is_greater_or_equal = a.release >= min_compat_release
     is_same_prefix = a.release[: len(b.release) - 1] == b.release[: len(b.release) - 1]
 
-    return is_greater_or_equal and is_same_prefix
+    return bool(is_greater_or_equal and is_same_prefix)
 
 
 # Mapping of pep440 version comparison operators to their corresponding functions
@@ -209,7 +211,9 @@ def fetch_min_compatible_version(
     return str(_min_compatible_version(available, constraints))
 
 
-def min_compatible_version_offline(constraints: Sequence[VersionConstraint]) -> str | None:
+def min_compatible_version_offline(
+    constraints: Sequence[VersionConstraint],
+) -> str | None:
     """Return the minimum version that satisfies `constraints` without the internet.
 
     If we don't have internet access, we can't fetch the available versions, and so

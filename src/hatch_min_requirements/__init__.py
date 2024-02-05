@@ -32,6 +32,6 @@ class MinRequirementsMetadataHook(MetadataHookInterface):
         metadata["optional-dependencies"][MIN_REQS_EXTRA] = min_reqs
 
 
-@hookimpl
+@hookimpl  # type: ignore
 def hatch_register_metadata_hook() -> type[MetadataHookInterface]:
     return MinRequirementsMetadataHook
