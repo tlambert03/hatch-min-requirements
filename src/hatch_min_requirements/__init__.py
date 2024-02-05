@@ -32,7 +32,7 @@ from __future__ import annotations
 import operator
 from functools import lru_cache
 from importlib import metadata
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Sequence, cast
 
 from hatchling.metadata.plugin.interface import MetadataHookInterface
 from hatchling.plugin import hookimpl
@@ -50,7 +50,7 @@ if TYPE_CHECKING:
     # version       = wsp* <( letterOrDigit | '-' | '_' | '.' | '*' | '+' | '!' )+>
     VersionStr: TypeAlias = str
     # version_one   = version_cmp:op version:v wsp* -> (op, v)
-    VersionOne = tuple[VersionCmp, VersionStr]
+    VersionConstraint = tuple[VersionCmp, VersionStr]
 
 try:
     __version__ = metadata.version("hatch-min-requirements")
@@ -124,7 +124,7 @@ def minimize_requirement(requirement: str) -> str:
 
     # look for the presence of any version constraint
     version_one = r"\s*(<=|<|!=|==|>=|>|~=|===)\s*([a-zA-Z0-9_.+\-*!]+)"
-    constraints = cast(list["VersionOne"], re.findall(version_one, name_and_ver))
+    constraints = cast(list["VersionConstraint"], re.findall(version_one, name_and_ver))
     if constraints:
         name_and_extra = name_and_ver.split(constraints[0][0])[0].strip()
     else:
@@ -141,7 +141,7 @@ def minimize_requirement(requirement: str) -> str:
 
 
 def serialize_name_req(
-    name: str, extras: list[str], constraints: list[VersionOne], markers: str
+    name: str, extras: list[str], constraints: list[VersionConstraint], markers: str
 ) -> str:
     """Put all the parts of a name_req back together into a single string."""
     out = name
@@ -155,8 +155,22 @@ def serialize_name_req(
 
 
 @lru_cache
-def get_available_versions(name: str) -> list[str]:
-    """Return a list of available versions for the given package name."""
+def fetch_available_versions(name: str) -> list[str]:
+    """Return a list of available versions for the given package name.
+
+    This uses `pip index versions` to get the available versions, which requires
+    pip >= 21.2.
+
+    Parameters
+    ----------
+    name : str
+        The name of the package.
+
+    Returns
+    -------
+    list[str]
+        A list of available version strings for the package.
+    """
     import subprocess
 
     try:
@@ -169,13 +183,45 @@ def get_available_versions(name: str) -> list[str]:
         return []
 
 
-def resolve_min_version(name: str, constraints: list[VersionOne]) -> str:
+def fetch_min_compatible_version(
+    name: str, constraints: Sequence[VersionConstraint] | None = None
+) -> str:
     """Resolve minimum version of name that satisfies constraints.
 
-    This will hit the network to get the available versions of the package.
+    This requires network access to fetch the available versions.
+
+    Parameters
+    ----------
+    name : str
+        The name of the package.
+    constraints : Sequence[VersionConstraint], optional
+        A sequence of version constraints to satisfy, e.g. `[(">=", "1.20")]`.
+        By default, `None`.
+
+    Returns
+    -------
+    str
+        The minimum version of the package that satisfies the constraints.
+
+    Examples
+    --------
+    >>> fetch_min_compatible_version('numpy')
+    '1.3.0'
+    >>> fetch_min_compatible_version("numpy", [(">=", "1.20")])
+    '1.20.0'
+    >>> fetch_min_compatible_version("numpy", [(">", "1.20")])
+    '1.20.1'
+    >>> fetch_min_compatible_version("numpy", [("<", "1.20")])
+    '1.3.0'
+    >>> fetch_min_compatible_version("numpy", [("<", "1.20"), ("!=", "1.3")])
+    '1.4.1'
     """
-    # TODO: handle err
-    avail = [parse_version(v) for v in get_available_versions(name)]
+    avail = []
+    for v in fetch_available_versions(name):
+        try:
+            avail.append(parse_version(v))
+        except ValueError:
+            pass
 
     if not constraints:
         return str(min(avail))
@@ -193,14 +239,14 @@ def resolve_min_version(name: str, constraints: list[VersionOne]) -> str:
 
 
 def min_allowable_version(
-    constraints: list[VersionOne],
+    constraints: list[VersionConstraint],
     name: str = "",
     offline: bool = False,
-) -> VersionOne | None:
+) -> VersionConstraint | None:
     """Given a list of version constraints, return the minimum allowable version."""
     if not constraints:
         if name and not offline:
-            avail = resolve_min_version(name, [])
+            avail = fetch_min_compatible_version(name, [])
             return ("==", avail)
         return None
 
@@ -235,13 +281,13 @@ def min_allowable_version(
     # if it specifies an exclusive minimum bound or a maximum bound
     # we need to know the available versions to determine the minimum
     if min_op in ("<", "<=", ">") and name and not offline:
-        min_ver = resolve_min_version(name, constraints)
+        min_ver = fetch_min_compatible_version(name, constraints)
         return ("==", str(min_ver))
 
     # if it specifies an exclusive minimum bound
     if min_op == ">":
         if name and not offline:
-            avail = get_available_versions(name)
+            avail = fetch_available_versions(name)
             min_avail = min(
                 vv
                 for v in avail
@@ -253,7 +299,7 @@ def min_allowable_version(
     # if it specifies a maximum bound
     if min_op in ("<", "<="):
         if name and not offline:
-            avail = get_available_versions(name)
+            avail = fetch_available_versions(name)
             min_avail = min(
                 vv
                 for v in avail
@@ -264,7 +310,9 @@ def min_allowable_version(
     raise ValueError(f"Invalid version comparison operator: {min_op}")
 
 
-def parse_name_req(requirement: str) -> tuple[str, list[str], list[VersionOne], str | None]:
+def parse_name_req(
+    requirement: str,
+) -> tuple[str, list[str], list[VersionConstraint], str | None]:
     """Parse a PEP 508 requirement string into name, extras, constraints, and marker.
 
     we specifically use `name_req()` instead of `specification()` here
