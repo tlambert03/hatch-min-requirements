@@ -6,11 +6,12 @@ import operator
 import os
 import re
 from contextlib import suppress
-from functools import lru_cache
 from typing import TYPE_CHECKING, Callable
 
 from packaging.version import Version as PackagingVersion
 from packaging.version import parse as parse_version
+
+from ._fetch import fetch_available_versions
 
 if TYPE_CHECKING:
     from typing import Literal, Sequence, TypeAlias
@@ -42,35 +43,6 @@ version_specifier_pattern = re.compile(
     """,
     re.VERBOSE,
 )
-
-
-@lru_cache
-def fetch_available_versions(name: str) -> list[str]:
-    """Return a list of available versions for the given package name.
-
-    This uses `pip index versions` to get the available versions, which requires
-    pip >= 21.2.
-
-    Parameters
-    ----------
-    name : str
-        The name of the package.
-
-    Returns
-    -------
-    list[str]
-        A list of available version strings for the package.
-    """
-    import subprocess
-
-    try:
-        output = subprocess.check_output(
-            ["pip", "index", "versions", name], text=True, stderr=subprocess.PIPE
-        )
-        avail = output.split("Available versions:")[1].split("\n")[0].strip()
-        return avail.split(", ")
-    except subprocess.CalledProcessError:
-        return []
 
 
 def version_is_compatible(a: PackagingVersion, b: PackagingVersion) -> bool:
