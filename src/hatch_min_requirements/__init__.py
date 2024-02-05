@@ -29,19 +29,20 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 from __future__ import annotations
 
-import os
-import platform
-import sys
+import operator
+from functools import lru_cache
 from importlib import metadata
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from hatchling.metadata.plugin.interface import MetadataHookInterface
 from hatchling.plugin import hookimpl
+from packaging.version import parse as parse_version
 from parsley import ParseError, makeGrammar
 
 if TYPE_CHECKING:
     from typing import Callable, Literal, TypeAlias
 
+    from packaging.version import Version as PackagingVersion
     from parsley import _GrammarWrapper
 
     # version_cmp   = wsp* <'<=' | '<' | '!=' | '==' | '>=' | '>' | '~=' | '==='>
@@ -59,6 +60,17 @@ __author__ = "Talley Lambert"
 
 __all__ = ("MinRequirementsMetadataHook", "parse_requirements")
 
+OPS: dict[str, Callable[[Any, Any], bool]] = {
+    "<=": operator.le,
+    "<": operator.lt,
+    "!=": operator.ne,
+    "==": operator.eq,
+    ">=": operator.ge,
+    ">": operator.gt,
+    "~=": operator.ge,
+    "===": operator.eq,
+}
+
 
 class MinRequirementsMetadataHook(MetadataHookInterface):
     """Hatchling metadata hook to populate optional-dependencies from dependencies."""
@@ -75,18 +87,57 @@ def hatch_register_metadata_hook() -> type[MetadataHookInterface]:
     return MinRequirementsMetadataHook
 
 
+# def minimize_requirement(requirement: str) -> str:
+#     try:
+#         # we specifically use name_req() instead of specification() here
+#         # to exclude url_req
+#         name, extras, constraints, _ = parse_name_req(requirement)
+#     except ParseError:
+#         # If the requirement is not a name_req, return it unchanged
+#         return requirement
+#     if not (min_version := min_allowable_version(constraints)):
+#         return requirement
+#     markers = requirement.split(";", 1)[1] if ";" in requirement else ""
+#     return serialize_name_req(name, extras, [min_version], markers)
+
+
 def minimize_requirement(requirement: str) -> str:
-    try:
-        # we specifically use name_req() instead of specification() here
-        # to exclude url_req
-        name, extras, constraints, _ = parse_name_req(requirement)
-    except ParseError:
-        # If the requirement is not a name_req, return it unchanged
+    """Return a minimal requirement string for the given requirement string.
+
+    Examples
+    --------
+    >>> minimize_requirement("foo >=1.2,!=1.3")
+    'foo==1.2'
+    >>> minimize_requirement("foo >=1.2,!=1.3 ; python_version < '3.8'")
+    "foo==1.2 ; python_version < '3.8'"
+    >>> minimize_requirement("foo[extra] ~=1.2")
+    'foo[extra]==1.2'
+    >>> minimize_requirement("foo ==1.2")
+    'foo==1.2'
+    """
+    import re
+
+    if ";" in requirement:
+        name_and_ver, markers = requirement.split(";", 1)
+    else:
+        name_and_ver, markers = requirement, ""
+
+    # look for the presence of any version constraint
+    version_one = r"\s*(<=|<|!=|==|>=|>|~=|===)\s*([a-zA-Z0-9_.+\-*!]+)"
+    constraints = cast(list["VersionOne"], re.findall(version_one, name_and_ver))
+    if constraints:
+        name_and_extra = name_and_ver.split(constraints[0][0])[0].strip()
+    else:
+        name_and_extra = name_and_ver
+    name = name_and_extra.split("[", 1)[0]
+
+    if not (min_version := min_allowable_version(constraints, name)):
         return requirement
-    if not (min_version := min_allowable_version(constraints)):
-        return requirement
-    markers = requirement.split(";", 1)[1] if ";" in requirement else ""
-    return serialize_name_req(name, extras, [min_version], markers)
+
+    out = name_and_extra + "".join(min_version)
+    if markers:
+        out += ";" + markers
+    return out
 
 
 def serialize_name_req(
@@ -103,31 +154,114 @@ def serialize_name_req(
     return out
 
 
-def min_allowable_version(constraints: list[VersionOne]) -> VersionOne | None:
-    """Given a list of version constraints, return the minimum allowable version.
+@lru_cache
+def get_available_versions(name: str) -> list[str]:
+    """Return a list of available versions for the given package name."""
+    import subprocess
 
-    Examples
-    --------
-    >>> get_min_constraint([(">=", "1"), ("<", "2")])
-    ("==", "1")
-    >>> get_min_constraint([(">", "1"), ("<", "2")])
-    ("==", "1")
-    >>> get_min_constraint([("~=", "1.2.3")])
-    ("==", "1.2.3")
-    >>> get_min_constraint([("==", "1.2.3")])
-    ("==", "1.2.3")
+    try:
+        output = subprocess.check_output(
+            ["pip", "index", "versions", name], text=True, stderr=subprocess.PIPE
+        )
+        avail = output.split("Available versions:")[1].split("\n")[0].strip()
+        return avail.split(", ")
+    except subprocess.CalledProcessError:
+        return []
+
+
+def resolve_min_version(name: str, constraints: list[VersionOne]) -> str:
+    """Resolve minimum version of name that satisfies constraints.
+
+    This will hit the network to get the available versions of the package.
     """
+    # TODO: handle err
+    avail = [parse_version(v) for v in get_available_versions(name)]
+
     if not constraints:
+        return str(min(avail))
+
+    def satisfies_constraints(x: PackagingVersion) -> bool:
+        return all(OPS[op](x, parse_version(v)) for op, v in constraints)
+
+    try:
+        min_ver = min(x for x in avail if satisfies_constraints(x))
+    except ValueError:
+        raise ValueError(
+            f"No available version of {name!r} satisfies the constraints: {constraints}"
+        ) from None
+    return str(min_ver)
+
+
+def min_allowable_version(
+    constraints: list[VersionOne],
+    name: str = "",
+    offline: bool = False,
+) -> VersionOne | None:
+    """Given a list of version constraints, return the minimum allowable version."""
+    if not constraints:
+        if name and not offline:
+            avail = resolve_min_version(name, [])
+            return ("==", avail)
         return None
-    if len(constraints) == 1:
-        return ("==", constraints[0][-1])
 
     # FIXME: this is not correct
-    min_version = constraints[0][1]
-    for _op, version in constraints[1:]:
+    min_op, _min_version = constraints[0]
+    min_version = parse_version(_min_version)
+
+    exclude = set()
+    for op, _version in constraints[1:]:
+        if op == "===":
+            return (op, _version)
+        try:
+            version = parse_version(_version)
+        except ValueError:
+            # if we can't parse the version, we can't compare it
+            continue
+        if op == "!=":
+            exclude.add(version)
+            continue
         if version < min_version:
             min_version = version
-    return ("==", min_version)
+            min_op = op
+
+    # keep arbitrary equality constraints as is
+    if min_op == "===":
+        return (min_op, str(min_version))
+
+    # if it specifies a compatible minimum bound, use that
+    if min_op in ("==", ">=", "~="):
+        return ("==", str(min_version))
+
+    # if it specifies an exclusive minimum bound or a maximum bound
+    # we need to know the available versions to determine the minimum
+    if min_op in ("<", "<=", ">") and name and not offline:
+        min_ver = resolve_min_version(name, constraints)
+        return ("==", str(min_ver))
+
+    # if it specifies an exclusive minimum bound
+    if min_op == ">":
+        if name and not offline:
+            avail = get_available_versions(name)
+            min_avail = min(
+                vv
+                for v in avail
+                if (vv := parse_version(v)) > min_version and vv not in exclude
+            )
+            return ("==", str(min_avail))
+        return ("==", str(min_version))
+
+    # if it specifies a maximum bound
+    if min_op in ("<", "<="):
+        if name and not offline:
+            avail = get_available_versions(name)
+            min_avail = min(
+                vv
+                for v in avail
+                if (vv := parse_version(v)) < min_version and vv not in exclude
+            )
+            return ("==", str(min_avail))
+        return (min_op, str(min_version))
+    raise ValueError(f"Invalid version comparison operator: {min_op}")
 
 
 def parse_name_req(requirement: str) -> tuple[str, list[str], list[VersionOne], str | None]:
