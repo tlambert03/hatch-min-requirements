@@ -57,8 +57,9 @@ pip install -e .[min-reqs]
 In cases such as upper-bounds (`<X.Y`), non-inclusive lower bounds (`>X.Y`), and
 exclusions (`!=X.Y`), it's not possible to declare a minimum version without
 fetching available versions from PyPI.  By default, this plugin *will* attempt
-to connect to PYPI.  If you want to disable this behavior, you can set the
-`MIN_REQS_OFFLINE` environment variable to `1` or `True`.
+to connect to PyPI in order to determine compatible minimum version strings.  If
+you want to disable this behavior, you can set the `MIN_REQS_OFFLINE`
+environment variable to `1` or `True`.
 
 ```bash
 MIN_REQS_OFFLINE=1 pip install -e .[min-reqs]
