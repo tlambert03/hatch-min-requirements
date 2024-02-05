@@ -222,10 +222,10 @@ def min_compatible_version_offline(
 # This is the primary function in this module
 # ###########################################################################
 
-_OFFLINE = os.getenv("MIN_REQS_OFFLINE") in {"1", "true", "True", "yes", "Yes"}
+OFFLINE = os.getenv("MIN_REQS_OFFLINE") in {"1", "true", "True", "yes", "Yes"}
 
 
-def sub_min_compatible_version(spec: str, offline: bool = _OFFLINE) -> str:
+def sub_min_compatible_version(spec: str, offline: bool = OFFLINE) -> str:
     """Replace the version in a dependency specifier with the min compatible version.
 
     Parameters
