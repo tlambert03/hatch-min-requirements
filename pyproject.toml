@@ -16,7 +16,7 @@ sources = ["src"]
 # https://peps.python.org/pep-0621/
 [project]
 name = "hatch-min-requirements"
-dynamic = ["version"]
+# dynamic = ["version"]
 version = '0.1.0'
 description = "Hatchling plugin to create optional-dependencies pinned to minimum versions"
 readme = "README.md"
