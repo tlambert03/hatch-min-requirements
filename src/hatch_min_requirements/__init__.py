@@ -30,7 +30,7 @@ class MinRequirementsMetadataHook(MetadataHookInterface):
         """Update the project.optional-dependencies metadata."""
         min_reqs = [sub_min_compatible_version(dep) for dep in metadata["dependencies"]]
         metadata["optional-dependencies"][MIN_REQS_EXTRA] = min_reqs
-
+        breakpoint()
 
 @hookimpl  # type: ignore
 def hatch_register_metadata_hook() -> type[MetadataHookInterface]:
