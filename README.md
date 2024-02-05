@@ -52,6 +52,13 @@ pip install -e .[min-reqs]
 
 ## Considerations
 
+### Dependencies with no constraints
+
+In cases of dependencies declared without constraints (e.g. `foo`), the plugin
+*will*  versions of the package from PyPI. The goal here is to encourage
+*accurate* requirement pinning.  If you want to disable this behavior, you can
+use offline mode (see below).  This may be separately configurable in the future.
+
 ### Offline Mode
 
 In cases such as upper-bounds (`<X.Y`), non-inclusive lower bounds (`>X.Y`), and
@@ -101,3 +108,4 @@ set the `MIN_REQS_TRY_PIP` environment variable to `0` or `False`.
 - make the `min-reqs` extra configurable
 - add `offline` and `no-pip` options to the `min_requirements` table in
   pyproject
+- make pinning of unconstrained dependencies configurable
