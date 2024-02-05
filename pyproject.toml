@@ -24,6 +24,8 @@ license = { text = "BSD-3-Clause" }
 authors = [{ name = "Talley Lambert", email = "talley.lambert@example.com" }]
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "Framework :: Hatch",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -33,20 +35,15 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Typing :: Typed",
 ]
-dependencies = []
+dependencies = ["hatchling>=0.21.0"]
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 [project.optional-dependencies]
 test = ["pytest", "pytest-cov"]
-dev = [
-    "black",
-    "ipython",
-    "mypy",
-    "pdbpp",  # https://github.com/pdbpp/pdbpp
-    "pre-commit",
-    "rich",  # https://github.com/Textualize/rich
-    "ruff",
-]
+dev = ["black", "ipython", "mypy", "pdbpp", "pre-commit", "rich", "ruff"]
+
+[project.entry-points.hatch]
+min_requirements = "hatch_min_requirements"
 
 [project.urls]
 homepage = "https://github.com/tlambert03/hatch-min-requirements"
@@ -54,7 +51,7 @@ repository = "https://github.com/tlambert03/hatch-min-requirements"
 
 # https://docs.astral.sh/ruff
 [tool.ruff]
-line-length = 88
+line-length = 94
 target-version = "py38"
 src = ["src"]
 # https://docs.astral.sh/ruff/rules
@@ -118,8 +115,4 @@ show_missing = true
 source = ["hatch_min_requirements"]
 
 [tool.check-manifest]
-ignore = [
-    ".pre-commit-config.yaml",
-    ".ruff_cache/**/*",
-    "tests/**/*",
-]
+ignore = [".pre-commit-config.yaml", ".ruff_cache/**/*", "tests/**/*"]
