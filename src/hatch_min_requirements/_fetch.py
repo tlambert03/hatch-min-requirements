@@ -41,7 +41,9 @@ def fetch_available_versions_pip(package_name: str) -> list[str]:
 
     try:
         output = subprocess.check_output(
-            ["pip", "index", "versions", package_name], text=True, stderr=subprocess.PIPE
+            ["pip", "index", "versions", package_name],
+            text=True,
+            stderr=subprocess.PIPE,
         )
         avail = output.split("Available versions:")[1].split("\n")[0].strip()
         return avail.split(", ")
@@ -127,9 +129,8 @@ GOOD_PACKAGE_RGXN = [
     (
         "wheel",
         re.compile(
-            r"^(?P<project>{})-(?P<version>{})(-[0-9][^-]*?)?" r"-.+?-.+?-.+?\.whl$".format(
-                PROJECT_NAME_NODASH, VERSION_NODASH
-            )
+            r"^(?P<project>{})-(?P<version>{})(-[0-9][^-]*?)?"
+            r"-.+?-.+?-.+?\.whl$".format(PROJECT_NAME_NODASH, VERSION_NODASH)
         ),
     ),
 ]
@@ -165,7 +166,9 @@ BAD_PACKAGE_RGXN = [
 ]
 
 
-def parse_filename(filename: str, project_hint: str | None = None) -> tuple[str, str, str]:
+def parse_filename(
+    filename: str, project_hint: str | None = None
+) -> tuple[str, str, str]:
     for pkg_type, rgx in GOOD_PACKAGE_RGXN:
         m = rgx.match(filename)
         if m:
