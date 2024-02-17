@@ -9,6 +9,7 @@ PARAMS = [
     ("numpy!=1.3.0", "numpy==1.4.1", "numpy!=1.3.0"),
     ("numpy~=1.7", "numpy==1.7.0", "numpy==1.7"),
     ("numpy>=1.5.0", "numpy==1.5.0", "numpy==1.5.0"),
+    ("numpy >=1.5.0", "numpy ==1.5.0", "numpy ==1.5.0"),
     ("numpy[extra]", "numpy[extra]==1.3.0", "numpy[extra]"),
     ("numpy>1.3", "numpy==1.4.1", "numpy>1.3"),
     ("numpy[extra]>1.3", "numpy[extra]==1.4.1", "numpy[extra]>1.3"),

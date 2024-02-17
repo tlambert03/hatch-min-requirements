@@ -280,7 +280,7 @@ def sub_min_compatible_version(spec: str, offline: bool = OFFLINE) -> str:
         min_compat = min_compat
     else:
         # solve the min version compatible with the constraints, uses the internet
-        name = name_and_extra.split("[", 1)[0]
+        name = name_and_extra.split("[", 1)[0].strip()
         min_compat = fetch_min_compatible_version(name, constraints)
 
     return f"{name_and_extra}=={min_compat}{''.join(markers)}"
