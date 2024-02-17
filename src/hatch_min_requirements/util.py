@@ -222,10 +222,14 @@ def min_compatible_version_offline(
 # This is the primary function in this module
 # ###########################################################################
 
-OFFLINE = os.getenv("MIN_REQS_OFFLINE") in {"1", "true", "True", "yes", "Yes"}
+YES_LIKE = {"1", "true", "True", "yes", "Yes"}
+OFFLINE = os.getenv("MIN_REQS_OFFLINE") in YES_LIKE
+PIN_UNCONSTRAINED = os.getenv("MIN_REQS_PIN_UNCONSTRAINED", "1") in YES_LIKE
 
 
-def sub_min_compatible_version(spec: str, offline: bool = OFFLINE) -> str:
+def sub_min_compatible_version(
+    spec: str, offline: bool = OFFLINE, pin_unconstrained: bool = PIN_UNCONSTRAINED
+) -> str:
     """Replace the version in a dependency specifier with the min compatible version.
 
     Parameters
@@ -238,7 +242,13 @@ def sub_min_compatible_version(spec: str, offline: bool = OFFLINE) -> str:
         - "package-name[extra1,extra2]>=1.20,<2.0 ; python_version == '3.6'"
     offline : bool, optional
         If True, the function will not fetch available versions from the internet.
-        By default, False.
+        By default, False.  Can be overridden by the environment variable
+        `MIN_REQS_OFFLINE`.
+    pin_unconstrained : bool, optional
+        If True, the function will replace unconstrained versions with the min
+        compatible version (provided that offline is also `False`). If False, the
+        original spec will be returned for unconstrained versions. By default, True.
+        Can be overridden by the environment variable `MIN_REQS_PIN_UNCONSTRAINED`.
 
     Returns
     -------
@@ -269,6 +279,11 @@ def sub_min_compatible_version(spec: str, offline: bool = OFFLINE) -> str:
         if not str_idx:  # Save the index of the first version specifier
             str_idx = match.start()
         constraints.append(match.groups())  # type: ignore
+
+    # if there are no constraints and we're not pinning unconstrained versions
+    # return the original spec as is
+    if not constraints and not pin_unconstrained:
+        return spec
 
     # split the name from the extras and version spec
     name_and_extra = name_spec[:str_idx]

@@ -50,14 +50,28 @@ dynamically use the minimum compatible versions of your dependencies.
 pip install -e .[min-reqs]
 ```
 
+## Environment variables
+
+Environment variables can be used to configure the behavior.
+Described in detail below:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MIN_REQS_EXTRA_NAME` | `min-reqs` | The name of the extra to add to `pyproject.toml` |
+| `MIN_REQS_PIN_UNCONSTRAINED` | `True` | Pin unconstrained dependencies to minimum available version on PyPI. (e.g. `numpy` -> `numpy==1.3.0`) |
+| `MIN_REQS_OFFLINE` | `False` | Do not connect to PyPI to fetch available versions |
+| `MIN_REQS_TRY_PIP` | `True` | Use `pip` to fetch available versions in online mode.  Set to `0` to use stdlib tools only |
+
 ## Considerations
 
 ### Dependencies with no constraints
 
 In cases of dependencies declared without constraints (e.g. `foo`), the plugin
-*will*  versions of the package from PyPI. The goal here is to encourage
-*accurate* requirement pinning.  If you want to disable this behavior, you can
-use offline mode (see below).  This may be separately configurable in the future.
+*will* search for the minimum available version of the package from PyPI. The
+goal here is to encourage *accurate* requirement pinning. If you want to disable
+this behavior and leave unconstrained specifiers as is, you can either set the
+`MIN_REQS_PIN_UNCONSTRAINED` environment variable to `0` or `False`, or use
+offline mode with `MIN_REQS_OFFLINE=1` (see below).
 
 ### Offline Mode
 
@@ -87,7 +101,7 @@ dependencies = [
 ]
 ```
 
-### Usage of pip
+### Usage of pip vs standard-lib tools
 
 Fetching the available versions of a package is not trivial, and `pip` is the
 *de facto* tool for doing so.  If `pip` is available in the build environment,
@@ -100,7 +114,7 @@ must opt in to this behavior by adding `pip` to your `build-system.requires`
 requires = ["hatchling", "hatch-min-requirements", "pip"]
 ```
 
-To explicitly opt out of using pip, and use standard library tools only, you can
+To explicitly opt out of using pip (even if it's available) and use standard library tools only, you can
 set the `MIN_REQS_TRY_PIP` environment variable to `0` or `False`.
 
 ## TODO
@@ -108,4 +122,3 @@ set the `MIN_REQS_TRY_PIP` environment variable to `0` or `False`.
 - make the `min-reqs` extra configurable
 - add `offline` and `no-pip` options to the `min_requirements` table in
   pyproject
-- make pinning of unconstrained dependencies configurable

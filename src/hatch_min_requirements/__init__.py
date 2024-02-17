@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from importlib import metadata
 from pathlib import Path
 
@@ -19,7 +20,7 @@ __author__ = "Talley Lambert"
 __all__ = ["MinRequirementsMetadataHook"]
 
 
-MIN_REQS_EXTRA = "min-reqs"
+MIN_REQS_EXTRA = os.getenv("MIN_REQS_EXTRA_NAME", "min-reqs")
 
 
 class MinRequirementsMetadataHook(MetadataHookInterface):
@@ -52,7 +53,7 @@ def patch_pyproject(
         Path to the pyproject.toml file.
     extra_name : str, optional
         Name of the extra to add to the optional-dependencies table, by default
-        'min-reqs'.
+        'min-reqs'. Can be set with the MIN_REQS_EXTRA_NAME environment variable.
     tab : str, optional
         String to use for indentation, by default four spaces.
     """
