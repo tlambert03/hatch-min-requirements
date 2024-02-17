@@ -6,6 +6,7 @@ import operator
 import os
 import re
 from contextlib import suppress
+import warnings
 from typing import TYPE_CHECKING, Callable
 
 from packaging.version import Version as PackagingVersion
@@ -178,7 +179,7 @@ def fetch_min_compatible_version(
     for v in fetch_available_versions(package):
         with suppress(ValueError):  # TODO: warn if we can't parse?
             available.append(parse_version(v))
-    if not available:
+    if not available:  # pragma: no cover
         raise ValueError(f"No available versions found for package {package!r}")
     return str(_min_compatible_version(available, constraints))
 
@@ -204,7 +205,12 @@ def min_compatible_version_offline(
         if op in {">=", "~="}:
             try:
                 v = parse_version(version)
-            except ValueError:
+            except ValueError as e:  # pragma: no cover
+                warnings.warn(
+                    f"Failed to parse version {version!r}: {e}. Skipping.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
                 continue
             # if we haven't seen any lower bounds yet, or if this lower bound is greater
             # than the current min, update the min

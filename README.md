@@ -61,6 +61,38 @@ Described in detail below:
 | `MIN_REQS_OFFLINE` | `False` | Do not connect to PyPI to fetch available versions |
 | `MIN_REQS_TRY_PIP` | `True` | Use `pip` to fetch available versions in online mode.  Set to `0` to use stdlib tools only |
 
+## Utilities
+
+This package provides two convenience functions that can be used directly
+(without being a hatch plugin).
+
+- `hatch_min_requirements.sub_min_compatible_version`
+
+  Takes a pip requirement string and returns a new requirement string with the
+  minimum compatible version substituted in.
+
+  ```python
+  >>> sub_min_compatible_version("numpy")
+  'numpy==1.3.0'
+  >>> sub_min_compatible_version("numpy>=1.4.1")
+  'numpy==1.4.1'
+  >>> sub_min_compatible_version("numpy>1.3")
+  'numpy==1.4.1'
+  >>> sub_min_compatible_version("numpy[extra1,extra2]>=1.20,<2.0")
+  'numpy[extra1,extra2]==1.20.0'
+  >>> sub_min_compatible_version("numpy[extra]<2; python_version == '3.6'")
+  "numpy[extra]==1.3.0 ; python_version == '3.6'"
+  ```
+
+- `hatch_min_requirements.patch_pyproject`
+
+  Takes a path to a `pyproject.toml` file and patches it to include the
+  `min-reqs` extra.  The original file is backed up with a `.BAK` extension.
+
+  ```python
+  >>> patch_pyproject("path/to/pyproject.toml")
+  ```
+
 ## Considerations
 
 ### Dependencies with no constraints

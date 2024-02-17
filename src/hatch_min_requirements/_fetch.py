@@ -5,6 +5,9 @@ import re
 import urllib.request
 from contextlib import suppress
 from functools import lru_cache
+import warnings
+from packaging.version import parse as parse_version
+from packaging.version import Version as PackagingVersion
 
 TRY_PIP = os.getenv("MIN_REQS_TRY_PIP", "1") in {"1", "true", "True", "yes", "Yes"}
 
@@ -49,7 +52,12 @@ def fetch_available_versions_pip(package_name: str) -> list[str]:
         )
         avail = output.split("Available versions:")[1].split("\n")[0].strip()
         return avail.split(", ")
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:  # pragma: no cover
+        warnings.warn(
+            f"Failed to fetch available versions for {package_name}: {e}",
+            RuntimeWarning,
+            stacklevel=2,
+        )
         return []
 
 
@@ -60,12 +68,19 @@ def fetch_available_versions_std_lib(package_name: str) -> list[str]:
     try:
         with urllib.request.urlopen(url) as response:
             html = response.read().decode("utf-8")
-            versions = set()
+            versions: set[PackagingVersion] = set()
             for link in re.findall(r">([^>]+)</a>", html):
                 with suppress(ValueError):
-                    versions.add(parse_filename(link)[1])
-            return sorted(versions, reverse=True)
-    except Exception:
+                    version = parse_version(parse_filename(link)[1])
+                    if not version.is_prerelease:
+                        versions.add(version)
+            return [str(x) for x in sorted(versions, reverse=True)]
+    except Exception as e:  # pragma: no cover
+        warnings.warn(
+            f"Failed to fetch available versions for {package_name}: {e}",
+            RuntimeWarning,
+            stacklevel=2,
+        )
         return []
 
 
@@ -131,8 +146,9 @@ GOOD_PACKAGE_RGXN = [
     (
         "wheel",
         re.compile(
-            r"^(?P<project>{})-(?P<version>{})(-[0-9][^-]*?)?"
-            r"-.+?-.+?-.+?\.whl$".format(PROJECT_NAME_NODASH, VERSION_NODASH)
+            r"^(?P<project>{})-(?P<version>{})(-[0-9][^-]*?)?" r"-.+?-.+?-.+?\.whl$".format(
+                PROJECT_NAME_NODASH, VERSION_NODASH
+            )
         ),
     ),
 ]
@@ -168,14 +184,12 @@ BAD_PACKAGE_RGXN = [
 ]
 
 
-def parse_filename(
-    filename: str, project_hint: str | None = None
-) -> tuple[str, str, str]:
+def parse_filename(filename: str, project_hint: str | None = None) -> tuple[str, str, str]:
     for pkg_type, rgx in GOOD_PACKAGE_RGXN:
         m = rgx.match(filename)
         if m:
             return (m.group("project"), m.group("version"), pkg_type)
-    if project_hint is not None:
+    if project_hint is not None:  # pragma: no cover
         proj_rgx = re.sub(r"[^A-Za-z0-9]+", "[-_.]+", project_hint)
         proj_rgx = re.sub(
             r"([A-Za-z])",
@@ -194,4 +208,4 @@ def parse_filename(
         m = rgx.match(filename)
         if m:
             return (m.group("project"), m.group("version"), pkg_type)
-    raise ValueError(f"Could not parse filename: {filename!r}")
+    raise ValueError(f"Could not parse filename: {filename!r}")  # pragma: no cover

@@ -13,11 +13,11 @@ from .util import sub_min_compatible_version
 
 try:
     __version__ = metadata.version("hatch-min-requirements")
-except metadata.PackageNotFoundError:
+except metadata.PackageNotFoundError:  # pragma: no cover
     __version__ = "uninstalled"
 __author__ = "Talley Lambert"
 
-__all__ = ["MinRequirementsMetadataHook"]
+__all__ = ["MinRequirementsMetadataHook", "patch_pyproject", "sub_min_compatible_version"]
 
 
 MIN_REQS_EXTRA = os.getenv("MIN_REQS_EXTRA_NAME", "min-reqs")
@@ -40,7 +40,7 @@ def hatch_register_metadata_hook() -> type[MetadataHookInterface]:
 
 
 def patch_pyproject(
-    path: str | Path, extra_name: str = MIN_REQS_EXTRA, tab: str = " " * 4
+    path: str | Path = "pyproject.toml", extra_name: str = MIN_REQS_EXTRA, tab: str = " " * 4
 ) -> None:
     """Directly modify pyproject.toml to add min-reqs optional-dependency.
 
@@ -87,7 +87,7 @@ def patch_pyproject(
     if table_header in pyproject_text:
         modified_pyproject_text = pyproject_text.replace(table_header, min_reqs_text, 1)
     else:
-        modified_pyproject_text = pyproject_text + "\n" + min_reqs_text
+        modified_pyproject_text = pyproject_text + "\n" + min_reqs_text + "\n"
 
     # backup original pyproject.toml
     with open(Path(path).with_suffix(".toml.BAK"), "w") as f:
