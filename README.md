@@ -35,7 +35,6 @@ In your `pyproject.toml` make the following changes:
 - Add a `[tool.hatch.metadata.hooks.min_requirements]` table.
 
 ```toml
-# pyproject.toml
 [build-system]
 requires = ["hatchling", "hatch-min-requirements"]
 build-backend = "hatchling.build"
@@ -55,7 +54,7 @@ pip install -e .[min-reqs]
 Environment variables can be used to configure the behavior.
 Described in detail below:
 
-| Variable | Default | Description |
+| Variable | Default   | Description |
 |----------|---------|-------------|
 | `MIN_REQS_EXTRA_NAME` | `min-reqs` | The name of the extra to add to `pyproject.toml` |
 | `MIN_REQS_PIN_UNCONSTRAINED` | `True` | Pin unconstrained dependencies to minimum available version on PyPI. (e.g. `numpy` -> `numpy==1.3.0`) |
@@ -92,7 +91,7 @@ your dependency as stated (meaning you won't be testing lower bounds).  If you
 want to test lower bounds without connecting to PyPI, you should pin your
 dependencies with *inclusive* lower bounds:
 
-```toml
+```
 [project]
 dependencies = [
     "foo>=1.2.3"  # will be pinned to "foo==1.2.3"
@@ -107,9 +106,9 @@ Fetching the available versions of a package is not trivial, and `pip` is the
 *de facto* tool for doing so.  If `pip` is available in the build environment,
 this plugin will use it to fetch the available versions of a package. But, you
 must opt in to this behavior by adding `pip` to your `build-system.requires`
+in `pyproject.toml`:
 
 ```toml
-# pyproject.toml
 [build-system]
 requires = ["hatchling", "hatch-min-requirements", "pip"]
 ```
