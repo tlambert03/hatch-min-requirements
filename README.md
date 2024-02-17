@@ -150,6 +150,5 @@ set the `MIN_REQS_TRY_PIP` environment variable to `0` or `False`.
 
 ## TODO
 
-- make the `min-reqs` extra configurable
 - add `offline` and `no-pip` options to the `min_requirements` table in
   pyproject
