@@ -27,6 +27,22 @@ This makes it easy to test your package against your minimum stated dependencies
 on CI, or to install your package with the minimum dependencies for local
 development.
 
+#### See also:
+
+You can achieve a similar aim with [hatch-pip-compile](https://github.com/juftin/hatch-pip-compile),
+using [uv](https://github.com/astral-sh/uv) as the pip-compile resolver with the `--resolution`
+flag set to `lowest` or `lowest-direct`:
+
+```toml
+[tool.hatch.env]
+requires = ["hatch-pip-compile"]
+
+[tool.hatch.envs.default]
+type = "pip-compile"
+pip-compile-resolver = "uv"
+pip-compile-args = ["--resolution=lowest-direct"]
+```
+
 ## Usage
 
 In your `pyproject.toml` make the following changes:
