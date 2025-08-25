@@ -65,10 +65,32 @@ dynamically use the minimum compatible versions of your dependencies.
 pip install -e .[min-reqs]
 ```
 
+## Configuration
+
+You can configure the plugin behavior directly in your `pyproject.toml` file using the `[tool.hatch.metadata.hooks.min_requirements]` table:
+
+```toml
+[tool.hatch.metadata.hooks.min_requirements]
+offline = true                # Don't connect to PyPI to fetch versions
+no_pip = true                 # Don't use pip to fetch versions  
+pin_unconstrained = false     # Don't pin unconstrained dependencies
+```
+
+Available options:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `offline` | `bool` | `false` | Do not connect to PyPI to fetch available versions |
+| `no_pip` | `bool` | `false` | Do not use pip to fetch available versions (use stdlib tools only) |
+| `pin_unconstrained` | `bool` | `true` | Pin unconstrained dependencies to minimum available version |
+
+These options take precedence over the corresponding environment variables (`MIN_REQS_OFFLINE`, `MIN_REQS_TRY_PIP`, `MIN_REQS_PIN_UNCONSTRAINED`).
+
 ## Environment variables
 
 Environment variables can be used to configure the behavior.
-Described in detail below:
+You can also configure these options directly in `pyproject.toml` (see [Configuration](#configuration) section above).
+Environment variables are used as fallbacks when options are not specified in the configuration.
 
 | Variable | Default   | Description |
 |----------|---------|-------------|
@@ -163,8 +185,3 @@ requires = ["hatchling", "hatch-min-requirements", "pip"]
 
 To explicitly opt out of using pip (even if it's available) and use standard library tools only, you can
 set the `MIN_REQS_TRY_PIP` environment variable to `0` or `False`.
-
-## TODO
-
-- add `offline` and `no-pip` options to the `min_requirements` table in
-  pyproject
