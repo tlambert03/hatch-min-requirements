@@ -6,6 +6,7 @@ import os
 from importlib import metadata
 from pathlib import Path
 
+import tomlkit
 from hatchling.metadata.plugin.interface import MetadataHookInterface
 from hatchling.plugin import hookimpl
 
@@ -57,41 +58,28 @@ def patch_pyproject(
     tab : str, optional
         String to use for indentation, by default four spaces.
     """
-    try:
-        import tomllib
-    except ImportError:
-        try:
-            import tomli as tomllib  # type: ignore
-        except ImportError as e:
-            raise ImportError("patch_pyproject requires tomllib or tomli") from e
-
     with open(path) as f:
         pyproject_text = f.read()
-        pyproject_data = tomllib.loads(pyproject_text)
+
+    doc = tomlkit.parse(pyproject_text)
 
     # get the dependencies and create min-reqs
-    project = pyproject_data.get("project", {})
+    project = doc.get("project", {})
     deps = project.get("dependencies", [])
     if not deps:
         return
     min_reqs = [sub_min_compatible_version(dep) for dep in deps]
 
-    # modify pyproject.toml text directly
-    table_header = "[project.optional-dependencies]"
-    min_reqs_text = f"{table_header}\n{extra_name} = [\n"
-    for dep in min_reqs:
-        min_reqs_text += f'{tab}"{dep}",\n'
-    min_reqs_text += "]"
+    # Ensure optional-dependencies subsection exists
+    if "optional-dependencies" not in project:
+        project["optional-dependencies"] = tomlkit.table()
 
-    # either append or add the optional-dependencies table
-    if table_header in pyproject_text:
-        modified_pyproject_text = pyproject_text.replace(table_header, min_reqs_text, 1)
-    else:
-        modified_pyproject_text = pyproject_text + "\n" + min_reqs_text + "\n"
+    # Add the min-reqs entry
+    project["optional-dependencies"][extra_name] = min_reqs
 
     # backup original pyproject.toml
     with open(Path(path).with_suffix(".toml.BAK"), "w") as f:
         f.write(pyproject_text)
 
     with open(path, "w") as f:
-        f.write(modified_pyproject_text)
+        f.write(tomlkit.dumps(doc))
