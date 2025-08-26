@@ -16,10 +16,7 @@ dependencies = ["requests>=2.0.0", "numpy"]
 
 MIN_REQS = """
 [project.optional-dependencies]
-min-reqs = [
-    "requests==2.0.0",
-    "numpy==1.3.0",
-]
+min-reqs = ["requests==2.0.0", "numpy==1.3.0"]
 """
 
 
